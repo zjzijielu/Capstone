@@ -11,9 +11,9 @@ def stretch_fill(score, perf, p):
     # get the perf in order, align the score
     score = score[:, 0:3]
     N = score.shape[0]
-    perf_aligned = np.zeros(N, 4)
-    ix = perf[:, 4]
-    perf_aligned[ix, :] = perf[:, 0:3]
+    perf_aligned = np.zeros((N, 4))
+    ix = perf[:, 4] - 1
+    perf_aligned[ix.astype(int), :] = perf[:, 0:4]
     
     oix = np.where(perf_aligned[:, 1] == 0)[0]
     # loop through 0 index
@@ -23,8 +23,8 @@ def stretch_fill(score, perf, p):
     for i in range(len(oix)):
         idx = oix[i]
         # deal with zero case: find the non-zero index of perf
-        pre_ix = np.where(perf_aligned[0:idx, 2] == p/2)[0][-1]
-        aft_ix = np.where(perf_aligned[0:, 2] == p/2)[0][0]
+        pre_ix = np.where(perf_aligned[0:idx, 2] == p/2)[0][-int(p/2):]
+        aft_ix = np.where(perf_aligned[0:, 2] == p/2)[0][:int(p/2)]
         if len(pre_ix) < p/2:
             aft_ix = np.where(perf_aligned[idx:, 2], p-len(pre_ix))[0][0]
         if len(aft_ix) < p/2:

@@ -4,6 +4,9 @@ from sample_perf import sample_perf
 from sample_perf_acc import sample_perf_acc
 from utils import *
 from get_last_syncix import get_last_syncix
+from stretch_fill import stretch_fill
+from get_fgt_acc import get_fgt_acc
+from get_median_alignedperf import get_median_alignedperf
 import numpy as np
 
 def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug=0):
@@ -24,7 +27,7 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     # test
     p = 2
     sec_p_beat = 1
-    folder_full = '/Users/luzijie/Desktop/Capstone/project/data/polysample_boy/'
+    folder_full = '/Users/luzijie/Desktop/Capstone/data/polysample_boy/'
     flag_debug = 0
     beat_p_bar = 4
     key = 60
@@ -80,9 +83,9 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     # (fake) ground truth
     aligned_perf_mels_fgt = np.zeros((N, 4, L+1))
     aligned_perf_accs_fgt = np.zeros((M, 4, L+1))
-    missing_melix = np.zeros((L+1, 1))
-    missing_accix = np.zeros((L+1, 1))
-    missing_accevtix = np.zeros((L+1, 1))
+    missing_melix = []
+    missing_accix = []
+    missing_accevtix = []
     # all slopes are selfnote-included slopes
     aligned_perf_mels_slopes = np.zeros((N, L+1))
     aligned_perf_accs_slopes = np.zeros((M, L+1))
@@ -106,10 +109,10 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     aligned_perf_accs_dsscale = np.zeros((M,4,L+1))
     aligned_perf_mels_dsscale = np.zeros((N,4,L+1))
     # index when doing stretch follow
-    Begin_ix_acc = np.zeros((L+1,1))
-    Sparse_ix_acc = np.zeros((L+1,1))
-    Begin_ix_mel = np.zeros((L+1,1))
-    Sparse_ix_mel = np.zeros((L+1,1))
+    Begin_ix_acc = []
+    Sparse_ix_acc = []
+    Begin_ix_mel = []
+    Sparse_ix_mel = []
     # rslt for stretch follow sampled perf mel/acc
     aligned_perf_mels_dsssm = np.zeros((N,4,L+1))
     aligned_perf_accs_dsssm = np.zeros((M,4,L+1))
@@ -136,10 +139,16 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     # compute the fake ground truth of perf_mel and perf_acc by perfs'
     for i in range(len(perffile_ix)):
         idx = perffile_ix[i]
+        aligned_perf_mels_fgt[:, :, i], missing_melix_new = stretch_fill(score_mel, perf_mels[i], p)
+        missing_melix.append(missing_melix_new)
+        # aligned_perf_accs_fgt[:, :, i], missing_accix_new, missing_accevtix_new = 
+        print(i+1)
+        get_fgt_acc(score_mel, score_acc, perf_mels[i], perf_accs[i], p, sec_p_beat)
         
     # the overall median
     c_melix, c_accix = get_last_syncix(score_mel, score_acc)
-
+    # print("aligned_perf_accs_fgt", aligned_perf_accs_fgt)
+    get_median_alignedperf(aligned_perf_accs_fgt[:, :, perffile_ix], c_melix)
     
 
 def main():
