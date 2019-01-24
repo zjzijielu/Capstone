@@ -35,31 +35,25 @@ def get_fgt_acc(score_mel, score_acc, perf_mel, perf_acc, p, sec_p_beat):
             span = DEFAULT_MAXSPAN
         else:
             pre_pcevt_t = np.mean(np.nonzero(perf_acc_aligned_filled[cevts_stix[i-1]:cevts_stix[i]-1, 2])[0])
-            next_pcevt_t = np.mean(np.nonzero(perf_acc_aligned_filled[cevts_stix[i]:cevts_stix[i+1]-1, 2])[0])
+            next_pcevt_t = np.mean(np.nonzero(perf_acc_aligned_filled[cevts_stix[i]:cevts_stix[i+1]+len(cevts[i+1])-1, 2])[0])
             span = (next_pcevt_t - pre_pcevt_t) / 2
         new_rsdls, retain_localix = delete_extreme_cevt_rsdls(cur_cevt, last_cevt_rsdl, span)
+        # print("retain_localix", retain_localix, "\tcevtstix", cevts_stix[])
 
         # the deleted accix
-        delete_localix = setdiff(np.arange(0, len(cur_cevt)), retain_localix)
+        delete_localix = np.setdiff1d(np.arange(0, len(cur_cevt)), retain_localix)
         if delete_localix.size != 0:
-            print("cevts_stix[i]", cevts_stix[i])
             delete_accix = cevts_stix[i] + delete_localix
-            print("delete_accix:", delete_accix)
             misalign_accix = np.append(misalign_accix, delete_accix, axis=0)
         
         # assign the last_rsdls to be the mean of current rsdl
         last_cevt_rsdl = np.mean(new_rsdls)
     
     # true misaligned one doesn't include oaccix (which perf_acc doesn't even have)
-    print("misalign_accix:", misalign_accix)
-    misalign_accix = setdiff(misalign_accix, oaccix)
-    print("oaccix:", oaccix)
-    print("misalign_accix:", misalign_accix)
+    misalign_accix = np.setdiff1d(misalign_accix, oaccix)
     # delete corresponding misaligned rows of perf_accs
-    d_rowix = ismember(misalign_accix, perf_acc[:, 4])    
-    print("d_rowix", d_rowix)
+    _, d_rowix = ismember_ix(misalign_accix, perf_acc[:, 4])
     perf_acc_fixed = perf_acc
-    # print("before:", perf_acc_fixed)
     if d_rowix != []:
         perf_acc_fixed = np.delete(perf_acc_fixed, d_rowix, axis=0)
     
@@ -69,7 +63,9 @@ def get_fgt_acc(score_mel, score_acc, perf_mel, perf_acc, p, sec_p_beat):
 
     if np.array_equal(missing_accevtix, oaccevtix) != True:
         print("missing_accevtix: ", missing_accevtix)
-        print("oaccevtix: ", oaccevtix)
-        raise ValueError("bug: whole cevts delete")
+        print("missing_accix", missing_accix)
+        print("oaccix", oaccix)
+        raise ValueError("***bug: whole cevts delete")
     
+    # print(aligned_perf_acc_fgt)
     return aligned_perf_acc_fgt, missing_accix, missing_accevtix

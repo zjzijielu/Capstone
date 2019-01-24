@@ -6,6 +6,8 @@ from utils import *
 from get_last_syncix import get_last_syncix
 from stretch_fill import stretch_fill
 from get_fgt_acc import get_fgt_acc
+from stretch_follow import stretch_follow
+from stretch_follow_acc import stretch_follow_acc
 from get_median_alignedperf import get_median_alignedperf
 import numpy as np
 
@@ -27,7 +29,7 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     # test
     p = 2
     sec_p_beat = 1
-    folder_full = '/Users/luzijie/Desktop/Capstone/data/polysample_boy/'
+    folder_full = '/Users/luzijie/Desktop/Capstone/data/polysample_believeme/'
     flag_debug = 0
     beat_p_bar = 4
     key = 60
@@ -40,15 +42,18 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     fn_acc = find('aligned_acc_*.txt', folder_acc)
     folder_syn = folder_full + 'syn/'
     folder_exp = folder_full + 'exp_rslt'
+    folder_score_mel = folder_mel + 'score/'
+    fn_score_mel = find('aligned_mel_*.txt', folder_score_mel)
+    folder_score_acc = folder_acc + 'score/'
+    fn_score_acc = find('aligned_acc_*.txt', folder_score_acc)
 
     # read in raw files and compute size parameters
     # read in scores
     scorefile_ix = get_scorefile_ix(folder_full)
     assert(scorefile_ix != -1)
 
-    score_mel = np.loadtxt(folder_mel + fn_mel[scorefile_ix])
-    score_acc = np.loadtxt(folder_acc + fn_acc[scorefile_ix])
-    print(score_acc.shape)
+    score_mel = np.loadtxt(folder_score_mel + fn_score_mel[0])
+    score_acc = np.loadtxt(folder_score_acc + fn_score_acc[0])
     
     # quantify the dynamics
     score_acc[:,1] = np.floor(np.mean(score_acc[:,1]))
@@ -60,7 +65,8 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     period = sec_p_beat / sr
     sampled_score_mel = sample_perf(score_mel,score_mel,score_acc, score_acc, sec_p_beat, beat_p_bar, sr, 1)
     SN = sampled_score_mel.shape[0]
-    sampled_score_acc = sample_perf_acc(score_acc, score_acc, sampled_score_mel,sampled_score_mel,sec_p_beat, sr, 1)
+    sampled_score_acc = sample_perf_acc(score_acc, score_acc, sampled_score_mel, sampled_score_mel, sec_p_beat, sr, 1)
+    # print("sampled_score_acc", sampled_score_acc, sampled_score_acc.shape)
     SM = sampled_score_acc.shape[0]
     p_slope = p
     p_sampleslope = p / 4
@@ -81,8 +87,8 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     
     # construct experiment truth and rslt container
     # (fake) ground truth
-    aligned_perf_mels_fgt = np.zeros((N, 4, L+1))
-    aligned_perf_accs_fgt = np.zeros((M, 4, L+1))
+    aligned_perf_mels_fgt = np.zeros((N, 4, L))
+    aligned_perf_accs_fgt = np.zeros((M, 4, L))
     missing_melix = []
     missing_accix = []
     missing_accevtix = []
@@ -99,10 +105,10 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     aligned_median_accs = np.zeros((M, 4, L+1))
     # results for different method 
     # rslt for only timing stretch, keep previous dy
-    aligned_perf_accs_dmsm = np.zeros((M,4,L+1))
-    aligned_perf_mels_dmsm = np.zeros((N,4,L+1))
-    aligned_perf_accs_dssm = np.zeros((M,4,L+1))
-    aligned_perf_mels_dssm = np.zeros((N,4,L+1))
+    aligned_perf_accs_dmsm = np.zeros((M,4,L))
+    aligned_perf_mels_dmsm = np.zeros((N,4,L))
+    aligned_perf_accs_dssm = np.zeros((M,4,L))
+    aligned_perf_mels_dssm = np.zeros((N,4,L))
     # rslt for timing stretch + dy from reference
     aligned_perf_accs_dmscale = np.zeros((M,4,L+1))
     aligned_perf_mels_dmscale = np.zeros((N,4,L+1))
@@ -139,17 +145,58 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     # compute the fake ground truth of perf_mel and perf_acc by perfs'
     for i in range(len(perffile_ix)):
         idx = perffile_ix[i]
-        aligned_perf_mels_fgt[:, :, i], missing_melix_new = stretch_fill(score_mel, perf_mels[i], p)
+        aligned_perf_mels_fgt[:, :, idx], missing_melix_new = stretch_fill(score_mel, perf_mels[idx], p)
         missing_melix.append(missing_melix_new)
-        # aligned_perf_accs_fgt[:, :, i], missing_accix_new, missing_accevtix_new = 
-        print(i+1)
-        get_fgt_acc(score_mel, score_acc, perf_mels[i], perf_accs[i], p, sec_p_beat)
+        aligned_perf_accs_fgt[:, :, idx], missing_accix_new, missing_accevtix_new = get_fgt_acc(score_mel, score_acc, perf_mels[idx], perf_accs[i], p, sec_p_beat)
         
     # the overall median
     c_melix, c_accix = get_last_syncix(score_mel, score_acc)
     # print("aligned_perf_accs_fgt", aligned_perf_accs_fgt)
-    get_median_alignedperf(aligned_perf_accs_fgt[:, :, perffile_ix], c_melix)
+    median_perf_mel = get_median_alignedperf(aligned_perf_mels_fgt[:, :, perffile_ix], c_melix)
+    median_perf_acc = get_median_alignedperf(aligned_perf_accs_fgt[:, :, perffile_ix], c_accix)
+    median_perf_concat = np.concatenate((median_perf_mel, median_perf_acc), axis=0)
+    median_perf_full_ix = np.argsort(median_perf_concat[:, 2])
+    median_perf_full = median_perf_concat[median_perf_full_ix]
+
+    if flag_debug == 0:
+        # TODO
+        pass
     
+    # median to decode each piece (decoded piece excluded)
+    for i in perffile_ix:
+        medianfile_ix = np.setdiff1d(perffile_ix, i)
+        aligned_median_mels[:, :, i] = get_median_alignedperf(aligned_perf_mels_fgt[:, :, medianfile_ix], c_melix)
+        aligned_median_accs[:, :, i] = get_median_alignedperf(aligned_perf_accs_fgt[:, :, medianfile_ix], c_accix)
+    
+    # compute sampled melody and acc
+    p_extra = 1
+    for i in perffile_ix:
+        sampled_perf_mels[:, :, i] = sample_perf(score_mel, aligned_perf_mels_fgt[:, :, i], score_acc, aligned_perf_accs_fgt[:, :, i], sec_p_beat, beat_p_bar, sr, p_extra)
+        sampled_perf_accs[:, :, i] = sample_perf_acc(score_acc, aligned_perf_accs_fgt[:, :, i], sampled_score_mel, sampled_perf_mels[:, :, i], sec_p_beat, sr, p_extra)
+
+    print(np.median(sampled_perf_accs, 2))
+
+    # decode the melody AND accompaniment by median stretch
+    # create the tensor to store the result of decoded perf accompany by
+    # stretch_follow_acc (median stretching melody)
+
+    # folder to store the (median stretch melody) rslt
+    # if flag_debug == 0:
+    #     folder_syn_msm = folder_syn + "MSM/"
+    #     if os.path.exists(folder_syn_msm):
+    #         os.rmdir(folder_syn_msm)
+    #     os.makedirs(folder_syn_msm)
+
+    # loop through perffile to do decoding
+    for i in perffile_ix:
+        # decode the accompaniment by median stretch the melody 
+        aligned_perf_accs_dmsm[:, :, i], aligned_perf_accs_dmscale[:, :, i], _, _, _ = \
+        stretch_follow_acc(aligned_median_mels[:, :, i], aligned_median_accs[:, :, i], perf_mels[i], p, score_mel, score_acc, 0, sec_p_beat)
+        # decode the melody by median stretch the melody
+        aligned_perf_mels_dmsm[:, :, i], aligned_perf_mels_dmscale[:, :, i], _, _, _ = \
+        stretch_follow(aligned_median_mels[:, :,i], perf_mels[i], p, sec_p_beat)
+        # write acc into midi
+
 
 def main():
     baseline_by_strectch(0,0,0,0,0)

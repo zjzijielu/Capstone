@@ -9,13 +9,12 @@ def stretch_fill(score, perf, p):
     #     perf_aligned_filled: the new perf_t after linear interpolation
 
     # get the perf in order, align the score
-    score = score[:, 0:3]
+    score = score[:, 0:4]
     N = score.shape[0]
     perf_aligned = np.zeros((N, 4))
     ix = perf[:, 4] - 1
     perf_aligned[ix.astype(int), :] = perf[:, 0:4]
-    
-    oix = np.where(perf_aligned[:, 1] == 0)[0]
+    oix = np.where(perf_aligned[:, 0] == 0)[0]
     # loop through 0 index
     getslop = lambda x, y: np.sum((y-np.mean(y))*(x-np.mean(x)))/np.sum(np.power(x-np.mean(x), 2))
     getinter = lambda s, x, y: np.mean(y)-s*np.mean(x)
@@ -25,13 +24,15 @@ def stretch_fill(score, perf, p):
         # deal with zero case: find the non-zero index of perf
         pre_ix = np.where(perf_aligned[0:idx, 2] == p/2)[0][-int(p/2):]
         aft_ix = np.where(perf_aligned[0:, 2] == p/2)[0][:int(p/2)]
+        # print("aft_ix", aft_ix)
         if len(pre_ix) < p/2:
-            aft_ix = np.where(perf_aligned[idx:, 2], p-len(pre_ix))[0][0]
+            aft_ix = np.where(perf_aligned[idx:, 2], p-len(pre_ix))[0][:int(p-len(pre_ix))]
         if len(aft_ix) < p/2:
-            pre_ix = np.where(perf_aligned[0:idx, 2], p-len(aft_ix))[0][-1]
+            pre_ix = np.where(perf_aligned[0:idx, 2], p-len(aft_ix))[0][-int(p-len(aft_ix)):]
 
-        aft_ix = aft_ix + i - 1
-
+        aft_ix = aft_ix + idx
+        # print("i", i)
+        # print("aft_ix", aft_ix)
         non_o_ix = np.append(pre_ix, aft_ix, axis=0)
 
         st_xs = score[non_o_ix, 2]

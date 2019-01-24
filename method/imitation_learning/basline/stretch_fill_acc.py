@@ -23,6 +23,7 @@ def stretch_fill_acc(score_mel, score_acc, perf_mel, perf_acc, p, sec_p_beat):
     perf_mel_aligned = np.zeros((N, 4))
     melix = perf_mel[:, 4] - 1
     perf_mel_aligned[melix.astype(int), :] = perf_mel[:, 0:4]
+    # print("perf_mel_aligned", perf_mel_aligned)
     # align the accompany
     score_acc = score_acc[:, 0:4]
     M = score_acc.shape[0]
@@ -52,7 +53,7 @@ def stretch_fill_acc(score_mel, score_acc, perf_mel, perf_acc, p, sec_p_beat):
         # otherwise we have to do regression filling based on perf_mel and perf_acc notes
         else:
             # add the cevtix into missing cevtsix
-            oacc_cevtix.append(cevtsix[i])
+            oacc_cevtix.append(cevtsix[idx])
             # get the melix for regression list 
             # find the score_mel melix that is right before and after missing perf_acc
             try:
@@ -86,12 +87,13 @@ def stretch_fill_acc(score_mel, score_acc, perf_mel, perf_acc, p, sec_p_beat):
                 rpre_acc_cevtix = np.where(cevts_st < score_acc[idx, 2])[0][-1]
                 raft_acc_cevtix = np.where(cevts_st > score_acc[idx, 2])[0][0]
                 # find the head and tail score acc cevtix for regression list
-                head_accevtix = np.where(cevts_st >= cevts_st[rpre_acc_cevtix] - p/2*sec_p_beat)
-                tail_accevtix = np.where(cevts_st <= cevts_st[raft_acc_cevtix] + p/2*sec_p_beat)
+                head_accevtix = np.where(cevts_st >= cevts_st[rpre_acc_cevtix] - p/2*sec_p_beat)[0][0]
+                tail_accevtix = np.where(cevts_st <= cevts_st[raft_acc_cevtix] + p/2*sec_p_beat)[0][-1]
                 # acc_cevtix for regression
-                acc_cevtix = np.append(np.arange(head_accevtix, rpre_acc_cevtix+1), np.arange(raft_acc_cevtix, tail_accevtix+1))
+                acc_cevtix = np.append(np.arange(head_accevtix, rpre_acc_cevtix), np.arange(raft_acc_cevtix, tail_accevtix))
                 # according to acc_cevtix get score_acc cevts_st time and perf_acc cevt median time
-                x = cevts_st[acc_cevtix] # score-acc cevts time
+                cevts_st = np.array(cevts_st)
+                x = cevts_st[acc_cevtix.astype(int)] # score-acc cevts time
                 y = np.zeros((len(acc_cevtix), 1)) # perf_acc cevts timing
                 # loop through the acc cevts
                 for j in range(len(y)):
@@ -105,8 +107,10 @@ def stretch_fill_acc(score_mel, score_acc, perf_mel, perf_acc, p, sec_p_beat):
                 non_o_accevtix = np.where(y)[0]
                 x = x[non_o_accevtix]
                 y = y[non_o_accevtix]
-                st_xs = np.append(st_xs, x, axis=0)
-                st_ys = np.append(st_ys, y, axis=0)
+                # st_xs = np.concatenate((st_xs, x), axis=0)
+                st_xs = np.append(st_xs, x)
+                st_ys = np.append(st_ys, y)
+                # st_ys = np.concatenate((st_ys, y), axis=0)
                 
             # do regression filling
             slop = getslop(st_xs, st_ys)
@@ -117,7 +121,7 @@ def stretch_fill_acc(score_mel, score_acc, perf_mel, perf_acc, p, sec_p_beat):
             perf_acc_aligned[idx, 2:4] = score_acc[idx, 2:4] * slop + inter
 
         # use score pitch as the pitch
-        perf_acc_aligned[i, 0] = score_acc[i, 0]
+        perf_acc_aligned[idx, 0] = score_acc[idx, 0]
 
     # assign the output
     perf_acc_aligned_filled = perf_acc_aligned

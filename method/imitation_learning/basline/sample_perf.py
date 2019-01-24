@@ -30,10 +30,10 @@ def sample_perf(score, perf, score_acc, perf_acc, sec_p_beat, beat_p_bar, sr, p)
     '''
 
     # test
-    p = 4
-    sec_p_beat = 1
-    beat_p_bar = 3
-    sr = 2
+    # p = 4
+    # sec_p_beat = 1
+    # beat_p_bar = 3
+    # sr = 2
 
     max_measure_gap = 1.5
     getslop = lambda x, y: np.sum((y-np.mean(y))*(x-np.mean(x)))/np.sum(np.power(x-np.mean(x), 2))
@@ -51,7 +51,6 @@ def sample_perf(score, perf, score_acc, perf_acc, sec_p_beat, beat_p_bar, sr, p)
     else:
         aligned_perf = perf
     M = score_acc.shape[0]
-    print("M:", M)
     aligned_perf_acc = np.zeros((M,4))
     if perf_acc.shape[1] == 5: # raw perf with index
         aligned_perf_acc[(perf_acc[:,4].astype(int)-1),:] = perf_acc[:,0:4]
@@ -65,29 +64,40 @@ def sample_perf(score, perf, score_acc, perf_acc, sec_p_beat, beat_p_bar, sr, p)
     begin_ix = index[0][0]
     end_ix = index[0][-1]
     # keep the sampled score starting time
-    sampled_scoretime = np.arange(score[begin_ix, 2], score[end_ix, 2], period).T
+    sampled_scoretime = np.arange(score[begin_ix, 2], score[end_ix, 2], period)
     SN = len(sampled_scoretime)
     sampled_perf = np.zeros((SN, 5))
     _, ix, s_ix = intersect_mtlb(score[:,2], sampled_scoretime)
     sampled_perf[s_ix, 0:4] = aligned_perf[ix, :]
     # put in existing notes ix
     sampled_perf[s_ix, 4] = ix
+    # print("sampled perf:", sampled_perf)
     # keep a copy of raw sampled score
     sampled_score = np.zeros((SN, 5))
     # the variable keep unsampled for sample notes
     sampled_score[s_ix,:] = score[ix,:]
-
+    # print("sampled_score", sampled_score)
     # fill the large gaps by adopting perf acc notes
     osix = np.where(sampled_perf[:,0] == 0)[0]
+    # print(sampled_score)
     for k in range(len(osix)):
         i = osix[k]
         # get indices around the missing sample note
         # the anchor note's index right before/after the missing sample note
-        aft_six = np.where(sampled_score[i:,0])[0][0] + i
+        
+        # print(i, np.where(sampled_score[i:, 0]))
+        # print(sampled_score[i:, 0])
+        try:
+            aft_six = np.where(sampled_score[i:,0])[0][0] + i
+        except:
+            aft_six = i
         pre_six = np.where(sampled_score[0:i,0])[0][-1]
+        # print("aft_six", aft_six)
         # if large gap, fill in information
+        # print(aft_six, pre_six, max_measure_gap * beat_p_bar * sec_p_beat / period)
         if ((aft_six - pre_six) >= (max_measure_gap * beat_p_bar * sec_p_beat / period)) and np.any(score_acc[:,3] == sampled_score[i, 3]):
             # index
+            print("large gap")
             sampled_perf[i, 4] = sampled_perf[pre_six, 4]
             # others follow the corresponding acc highest pitch note
             match_accix = np.where(score_acc[:,2] == sampled_scoretime[i])[0]
@@ -105,7 +115,10 @@ def sample_perf(score, perf, score_acc, perf_acc, sec_p_beat, beat_p_bar, sr, p)
         i = osix[k]
         # get indices around the missing sample note
         # the anchor note's index right before/after the missing sample note
-        aft_six = np.where(sampled_score[i:,0])[0][0] + i
+        try:
+            aft_six = np.where(sampled_score[i:,0])[0][0] + i
+        except:
+            aft_six = i 
         pre_six = np.where(sampled_score[0:i,0])[0][-1]
         # head ix is the starting point of regression (only for pre_six < 2 case)
         if pre_six - p*sr <= 0:
@@ -126,11 +139,15 @@ def sample_perf(score, perf, score_acc, perf_acc, sec_p_beat, beat_p_bar, sr, p)
             inter = getinter(slop, st_xs, st_ys)
             sampled_perf[i, 3] = sampled_scoretime[i] * slop + inter
         else: # todo: consider larger interval for v1 and vn?
-            n = aft_six - pre_six
+            if aft_six == len(sampled_perf) - 1:
+                n = aft_six - pre_six + 1
+                tn = sampled_perf[pre_six, 3] - sampled_perf[pre_six, 2]
+            else:
+                n = aft_six - pre_six
+                tn = sampled_perf[aft_six, 2] - sampled_perf[pre_six, 2]
             j = i - pre_six
-            tn = sampled_perf[aft_six, 2] - sampled_perf[pre_six, 2]
             assert(tn != 0)
-            v1 = period / (sampled_score[pre_six, 3] - sampled_perf[pre_six-1, 3])
+            v1 = period / (sampled_score[pre_six, 2] - sampled_perf[pre_six-1, 2])
             vn = 2 * n * period / tn - v1
             if v1 != vn:
                 ti = getti(v1, vn, n, j, tn)
@@ -145,6 +162,9 @@ def sample_perf(score, perf, score_acc, perf_acc, sec_p_beat, beat_p_bar, sr, p)
         dur_ratio = dur_perf / dur_score
         sampled_perf[i, 3] = sampled_perf[i, 2] + dur_ratio * period
     
-    # print(sampled_perf)
+    # replace the original sample note's ending time
+    for i in range(len(sampled_perf) - 1):
+        if sampled_perf[i, 3] > sampled_perf[i+1, 2]:
+            sampled_perf[i, 3] = sampled_perf[i+1, 2]
 
     return sampled_perf

@@ -26,8 +26,8 @@ def sample_perf_acc(score, perf, score_smel, perf_smel, sec_p_beat, sr, p_extra)
     # t is realtime, v is beat/sec, v-t area is beat.
     getti = lambda v1, vn, n, i, tn: tn*(-v1*n+math.sqrt(v1**2 * n**2 + n*i*(vn**2-v1**2))) / (n*(vn-v1)) 
     # preprocess the perf, let it be in order as score
-    N = score.shape[0]
-    aligned_perf = np.zeros((N, 4))
+    M = score.shape[0]
+    aligned_perf = np.zeros((M, 4))
     if perf.shape[1] == 5: # raw perf with index
         aligned_perf[(perf[:,4].astype(int)-1),:] = perf[:,0:4]
     else:
@@ -42,7 +42,7 @@ def sample_perf_acc(score, perf, score_smel, perf_smel, sec_p_beat, sr, p_extra)
     begin_ix = index[0][0]
     end_ix = index[0][-1]
     # sampled score cevts starting time
-    sampled_scorecevttime = np.arange(cevts_st[begin_ix], cevts_st[end_ix], period).T
+    sampled_scorecevttime = np.arange(cevts_st[begin_ix], cevts_st[end_ix], period)
     SCM = len(sampled_scorecevttime)
     # get the reserved perf and score
     ix = ismember(score[:, 2], sampled_scorecevttime)
@@ -55,7 +55,7 @@ def sample_perf_acc(score, perf, score_smel, perf_smel, sec_p_beat, sr, p_extra)
 
     # loop throught missing sampled_cevt index
     perf_add = np.zeros((0, 5))
-    osix = np.setdiff1d(sampled_scorecevttime, score_reserve[:, 2])
+    # osix = np.setdiff1d(sampled_scorecevttime, score_reserve[:, 2])
     osix = setdiff(sampled_scorecevttime, score_reserve[:, 2])
     for i in range(len(osix)):
         # get indices around the missing sample note
@@ -119,11 +119,11 @@ def sample_perf_acc(score, perf, score_smel, perf_smel, sec_p_beat, sr, p_extra)
         # print(new.shape)
         perf_add = np.append(perf_add, new, axis=0)
 
-    # print("append", np.append(perf_add, perf_reserve, axis=0))
     combined = np.append(perf_add, perf_reserve, axis=0)
-    sampled_perf_ix = np.argsort(combined[:, 3])
+    sampled_perf_ix = np.argsort(combined[:, 2])
     sampled_perf_acc = combined[sampled_perf_ix, :]
     if np.where(sampled_perf_acc[:, 0] == 0)[0].shape[0] != 0:
         raise ValueError("Result of Sampling has pitch value 0 in it.")
 
+    # print("sampled_perf_acc", sampled_perf_acc)
     return sampled_perf_acc
