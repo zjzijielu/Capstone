@@ -69,10 +69,10 @@ def stretch_follow(score, perf, p, sec_p_beat=1, flag_self=0, flag_anchor=0):
         
         if flag_self ==0: # exclude self point case
             head_ix = np.where(score[:, 2] >= (score[pre_ix, 2] - p * sec_p_beat))[0][0]
-            non_o_ix = np.where(perf_aligned[head_ix:pre_ix, 0]) + head_ix - 1
+            non_o_ix = np.where(perf_aligned[head_ix:pre_ix, 0])[0] + head_ix
         else: # include self point case
             head_ix = np.where(score[:, 2] >= score[i, 2] - p * sec_p_beat)[0][0]
-            non_o_ix = np.where(perf_aligned[head_ix:i, 0]) + head_ix - 1
+            non_o_ix = np.where(perf_aligned[head_ix:i, 0])[0] + head_ix
         if len(non_o_ix) < p:
             non_o_ix = np.where(perf_aligned[0:i-1, 2])[0][-p:]
             sparse_ix.append(i)

@@ -64,8 +64,7 @@ def stretch_follow_acc(ref_mel, ref_acc, perf_mel, p, score_mel, score_acc, flag
         perf_mel_aligned = perf_mel[:, 0:4]
     if flag_anchor == 1: # if it is a sampled version and use last anchor reg, ix is useful, otherwise not 
         if perf_mel.shape[1] == 4:
-            print('an unsampled version should not have flag_anchor == 1')
-            return
+            raise ValueError('an unsampled version should not have flag_anchor == 1')
         ix = perf_mel[:, 4]
     M = ref_acc.shape[0]
     # initialize outputs
@@ -90,17 +89,17 @@ def stretch_follow_acc(ref_mel, ref_acc, perf_mel, p, score_mel, score_acc, flag
         else: # for self-exclude case
             head_melix = np.where(score_mel[:, 2] >= (score_mel[pre_melix, 2] - p*sec_p_beat))[0][0]
         # deal with zero case: find the non-zero index of perf
-        non_o_melix = np.where(perf_mel_aligned[head_melix:pre_melix, 0]) + head_melix - 1
+        non_o_melix = np.where(perf_mel_aligned[head_melix:pre_melix, 0])[0] + head_melix
         # if melody list is too short based on p beat, we do 4 notes
         if len(non_o_melix) < p:
-            non_o_melix = np.where(perf_mel_aligned[0:pre_melix])
+            non_o_melix = np.where(perf_mel_aligned[0:pre_melix, 0])[0]
             sparse_ix.append(i)
         st_xs = ref_mel[non_o_melix, 2]
         st_ys = perf_mel_aligned[non_o_melix, 2]
         # if flag_self is 1, we include the perf_acc note itself into the list
         if flag_self == 1:
-            st_xs = np.append(st_xs, score_acc[i, 2], axis=0)
-            st_ys = np.append(st_ys, perf_acc_fgt[i, 2], axis=0)
+            st_xs = np.append(st_xs, score_acc[i, 2:3], axis=0)
+            st_ys = np.append(st_ys, perf_acc_fgt[i, 2:3], axis=0)
         # fill in the prediction perf by stretch
         st_slop = getslop(st_xs, st_ys)
         st_inter = getinter(st_slop, st_xs, st_ys)

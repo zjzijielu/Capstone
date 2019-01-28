@@ -1,7 +1,7 @@
 import numpy as np
 
 def stretch_fill(score, perf, p):
-    #  this function smooth out the 0 cases in mel_t by playing liner interpolation
+    #  this function smooth out the 0 cases in mel_t by playing linear interpolation
     #  of the previous 2 + afterwards 2 (4 in total) notes
     #  input:
     #     same as stretch follow

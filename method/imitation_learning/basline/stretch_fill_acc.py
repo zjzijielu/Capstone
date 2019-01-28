@@ -75,8 +75,8 @@ def stretch_fill_acc(score_mel, score_acc, perf_mel, perf_acc, p, sec_p_beat):
             head_melix = np.where(score_mel[:, 2] >= (score_mel[rpre_melix, 2] - p/2*sec_p_beat))[0][0]
             tail_melix = np.where(score_mel[:, 2] <= (score_mel[raft_melix, 2] + p/2*sec_p_beat))[0][-1] 
             # deal with zero case: find the non-zero index of perf
-            non_ohead_melix = np.where(perf_mel_aligned[head_melix:rpre_melix, 0] != 0)[0] + head_melix - 1
-            non_otail_melix = np.where(perf_mel_aligned[raft_melix:tail_melix, 0] != 0)[0] + raft_melix - 1
+            non_ohead_melix = np.where(perf_mel_aligned[head_melix:rpre_melix, 0] != 0)[0] + head_melix
+            non_otail_melix = np.where(perf_mel_aligned[raft_melix:tail_melix, 0] != 0)[0] + raft_melix
             non_o_melix = np.append(non_ohead_melix, non_otail_melix, axis=0)
             # form the regression and fill
             st_xs = score_mel[non_o_melix, 2]
