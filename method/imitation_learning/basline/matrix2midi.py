@@ -18,4 +18,7 @@ def matrix2midi(matrix, name):
         piano.notes.append(note)
     
     midi_file.instruments.append(piano)
-    midi_file.write("./results/" + name)
+    if 'data' in name:
+        midi_file.write(name)
+    else:
+        midi_file.write("./results/" + name)

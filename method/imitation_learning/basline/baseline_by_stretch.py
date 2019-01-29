@@ -44,7 +44,7 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     fn_mel = find('aligned_mel_*.txt', folder_mel)
     folder_acc = folder_full + 'aligned_accompany/'
     fn_acc = find('aligned_acc_*.txt', folder_acc)
-    folder_syn = folder_full + 'syn/'
+    folder_syn = folder_full + 'syn_py/'
     folder_exp = folder_full + 'exp_rslt'
     folder_score_mel = folder_mel + 'score/'
     fn_score_mel = find('aligned_mel_*.txt', folder_score_mel)
@@ -70,15 +70,20 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     sampled_score_mel = sample_perf(score_mel,score_mel,score_acc, score_acc, sec_p_beat, beat_p_bar, sr, 1)
     SN = sampled_score_mel.shape[0]
     sampled_score_acc = sample_perf_acc(score_acc, score_acc, sampled_score_mel, sampled_score_mel, sec_p_beat, sr, 1)
-    # print("sampled_score_acc", sampled_score_acc, sampled_score_acc.shape)
     SM = sampled_score_acc.shape[0]
     p_slope = p
     p_sampleslope = p / 4
 
+    # save sampled score
+    sampled_score_folder = "/Users/luzijie/Desktop/Capstone/data/polysample_boy/sampled_score/"
+    np.savetxt(sampled_score_folder + 'sampled_score_acc.txt', sampled_score_acc, fmt='%.4f')
+    np.savetxt(sampled_score_folder + 'sampled_score_mel.txt', sampled_score_mel, fmt='%.4f')
+    matrix2midi(sampled_score_acc, sampled_score_folder + "sampled_score_acc.mid")
+    matrix2midi(sampled_score_mel, sampled_score_folder + "sampled_score_mel.mid")
+
     # read in perfs, mel and acc into 2 structure array
     # NOTE: perf_ * s[scorefile_ix] = []
     perffile_ix = np.arange(0, len(fn_mel))
-    perffile_ix[scorefile_ix] = -1
     L = len(perffile_ix)
     perf_mels = []
     perf_accs = []
@@ -152,6 +157,8 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
         aligned_perf_mels_fgt[:, :, idx], missing_melix_new = stretch_fill(score_mel, perf_mels[idx], p)
         missing_melix.append(missing_melix_new)
         aligned_perf_accs_fgt[:, :, idx], missing_accix_new, missing_accevtix_new = get_fgt_acc(score_mel, score_acc, perf_mels[idx], perf_accs[i], p, sec_p_beat)
+        missing_accix.append(missing_accix_new)
+        missing_accevtix.append(missing_accevtix_new)
 
     # compute the median perf_mel and perf_acc    
     # the overall median
@@ -173,9 +180,9 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
         matrix2midi(median_perf_acc, song + '/' + 'median_acc.mid')
         matrix2midi(median_perf_full, song + '/' + 'median_full.mid')
         rslt_path = "/Users/luzijie/Desktop/Capstone/method/imitation_learning/basline/results/" + song + '/'
-        np.savetxt(rslt_path + 'median_mel.txt', median_perf_mel)
-        np.savetxt(rslt_path + 'median_acc.txt', median_perf_acc)
-        np.savetxt(rslt_path + 'median_full.txt', median_perf_full)
+        np.savetxt(rslt_path + 'median_mel.txt', median_perf_mel, fmt='%.4f')
+        np.savetxt(rslt_path + 'median_acc.txt', median_perf_acc, fmt='%.4f')
+        np.savetxt(rslt_path + 'median_full.txt', median_perf_full, fmt='%.4f')
     
     # median to decode each piece (decoded piece excluded)
     for i in perffile_ix:
@@ -189,18 +196,14 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
         sampled_perf_mels[:, :, i] = sample_perf(score_mel, aligned_perf_mels_fgt[:, :, i], score_acc, aligned_perf_accs_fgt[:, :, i], sec_p_beat, beat_p_bar, sr, p_extra)
         sampled_perf_accs[:, :, i] = sample_perf_acc(score_acc, aligned_perf_accs_fgt[:, :, i], sampled_score_mel, sampled_perf_mels[:, :, i], sec_p_beat, sr, p_extra)
 
-    print(np.median(sampled_perf_accs, 2))
+    # print(np.median(sampled_perf_accs, 2))
 
     # decode the melody AND accompaniment by median stretch
     # create the tensor to store the result of decoded perf accompany by
     # stretch_follow_acc (median stretching melody)
 
     # folder to store the (median stretch melody) rslt
-    # if flag_debug == 0:
-    #     folder_syn_msm = folder_syn + "MSM/"
-    #     if os.path.exists(folder_syn_msm):
-    #         os.rmdir(folder_syn_msm)
-    #     os.makedirs(folder_syn_msm)
+    folder_syn_msm = folder_syn + "MSM/"
 
     # loop through perffile to do decoding
     for i in perffile_ix:
@@ -213,10 +216,13 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
         # write acc into midi
         # print(aligned_perf_accs_dmsm[:, :, i].shape)
         # print(perf_mels[i][:, 0:4].shape)
-        new_matrix = np.append(aligned_perf_accs_dmsm[:, :, i], perf_mels[i][:, 0:4], axis=0)
-        rslt_notes_ix = np.argsort(new_matrix[:, 2])
-        rslt_notes = new_matrix[rslt_notes_ix]
-        # TODO: write midi_acc
+        if flag_debug == 0:
+            print("DMSM", aligned_perf_accs_dmsm[:, :, i])
+            new_matrix = np.append(aligned_perf_accs_dmsm[:, :, i], perf_mels[i][:, 0:4], axis=0)
+            rslt_notes_ix = np.argsort(new_matrix[:, 2])
+            rslt_notes = new_matrix[rslt_notes_ix]
+            matrix2midi(rslt_notes, folder_syn_msm + fn_acc[i][:-4] + '.mid')
+            raise ValueError
 
     # compute the residual
     st_ix = np.where(aligned_perf_accs_dmsm[:, 0, 0])[0][0]
@@ -227,6 +233,7 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
     Rsdl_mels_dmsm[st_ix:, :, :] = aligned_perf_mels_dmsm[st_ix:, :, :] - aligned_perf_mels_fgt[st_ix:, :, :]
     Rsdl_mels_dmscale[st_ix:, :, :] = aligned_perf_mels_dmscale[st_ix:, :, :] - aligned_perf_mels_fgt[st_ix:, :, :]
 
+'''
     # decode the melody AND accompaniment by stretch/scale score
     # create the tensor to store the result of decoded perf accompany by
     # stretch_follow_Acc (score sttretching melody)
@@ -251,31 +258,47 @@ def baseline_by_strectch(folder_full, p, sec_p_beat, beat_p_bar, key, flag_debug
         # decode the accompaniment
         # Predict umsampled acc by unsampled mel: stretch + scale
         aligned_perf_accs_dssm[:, :, i], aligned_perf_accs_dsscale[:, :, i], new_Begin_ix_acc, new_Sparse_ix_acc, _ = \
-        stretch_follow_acc(score_mel, score_acc, perf_mels_fgt_wix, p, score_mel, score_acc, 0, sec_p_beat)
+            stretch_follow_acc(score_mel, score_acc, perf_mels_fgt_wix, p, score_mel, score_acc, 0, sec_p_beat)
         Begin_ix_acc.append(new_Begin_ix_acc)
         Sparse_ix_acc.append(new_Sparse_ix_acc)
         # Predict unsapled acc by unsampled acc: self-included slopes
         # we have to creat a fake monophonic acc perf, and feed that in to the melody parameter
         mono_perf_acc = aligned_perf_accs_fgt[cevts_stix2, 0:4, i]
         mono_perf_acc[:, 2] = perf_accst[:, i]
-        _, _, _, _, aligned_perf_accs_slopes[:, [i]] = stretch_follow_acc(mono_score_acc, score_acc, mono_perf_acc, p_slope, mono_score_acc, score_acc, 0, sec_p_beat, 1, aligned_perf_accs_fgt[:, :, i])
+        _, _, _, _, aligned_perf_accs_slopes[:, [i]] = stretch_follow_acc(mono_score_acc, score_acc, \
+            mono_perf_acc, p_slope, mono_score_acc, score_acc, 0, sec_p_beat, 1, aligned_perf_accs_fgt[:, :, i])
         # predict unsampled acc by sampled mel: stretch
         aligned_perf_accs_dsssm[:, :, i], _, _, _, _ = stretch_follow_acc(sampled_score_mel, score_acc, \
-        sampled_perf_mels[:, :, i], p, sampled_score_mel, score_acc, 1, sec_p_beat)
+            sampled_perf_mels[:, :, i], p, sampled_score_mel, score_acc, 1, sec_p_beat)
         # predict sampled acc by sampled mel: stretch
         sampled_perf_accs_dsssm[:, :, i], _, _, _, _ = stretch_follow_acc(sampled_score_mel, sampled_score_acc, \
-        sampled_perf_mels[:, :, i], p, sampled_score_mel, sampled_score_acc, 0, sec_p_beat)
+            sampled_perf_mels[:, :, i], p, sampled_score_mel, sampled_score_acc, 0, sec_p_beat)
         # predict sampled acc by sampled acc: stretch
         # we have to create a fake monophonic sampled acc, and feed that into the melody parametere
         mono_perf_sacc = sampled_perf_accs[cevts_stix, 0:4, i]
         mono_perf_sacc[:, 2] = sampled_perf_accst[:, i]
         sampled_perf_accs_dsssa[:, :, i], _, _, _, _ = stretch_follow_acc(mono_sampled_score_acc, sampled_score_acc, \
-        mono_perf_sacc, p_sampleslope, mono_sampled_score_acc, sampled_score_acc, 0, sec_p_beat, 1, sampled_perf_accs[:, : ,i])
+            mono_perf_sacc, p_sampleslope, mono_sampled_score_acc, sampled_score_acc, 0, sec_p_beat, 1, sampled_perf_accs[:, : ,i])
 
         # decode the melody
-        
-
-        
+        # Predict unsampled mel by umsampled mel: stretch + scale
+        aligned_perf_mels_dssm[:, :, i], aligned_perf_mels_dsscale[:, :, i], new_Begin_ix_mel, new_Sparse_ix_mel, _ = \
+            stretch_follow(score_mel, perf_mels_fgt_wix, p, sec_p_beat)
+        # same above: self-include slope 
+        _, _, _, _, aligned_perf_mels_slopes[:, [i]] = stretch_follow(score_mel, perf_mels_fgt_wix, \
+            p_slope, sec_p_beat, 1, 1)
+        # predict unsampled mel by sampled mel: stretch
+        aligned_perf_mels_dsssm[:, :, i], _, _, _, _ = stretch_follow_acc(sampled_score_mel, score_mel, \
+            sampled_perf_mels[:, :, i], p, sampled_score_mel, score_mel, 1, sec_p_beat)
+        # predict sampled mel by sampled mel: stretch
+        sampled_perf_mels_dsssm[:, :, i], _, _, _, _ = stretch_follow(sampled_score_mel, sampled_perf_mels[:, :, i], p, sec_p_beat)
+        # same above: self-included slope
+        _, _, _, _, sampled_perf_mels_slopes[:, [i]] = stretch_follow(sampled_score_mel, sampled_perf_melsp[:, :, i], p_sampleslope, sec_p_beat, 1)
+        if flag_debug == 0:
+            # write acc into midi
+            # rslt_notes = 
+            pass
+'''
         
 
 def main():

@@ -17,7 +17,6 @@ def get_median_alignedperf(aligned_perfs, cursor_ix):
 
     # normalize overall length by median length
     med_length = np.median(perfs[:,2,:], axis=1)
-    print("perfs.shape", perfs.shape)
     for i in range(perfs.shape[2]):
         # debug last ix, for aligned perf it seems not necessary
         perfs[:, 2:4, i] = np.divide(perfs[:, 2:4, i], perfs[cursor_ix, 2, i]) * med_length[cursor_ix]
