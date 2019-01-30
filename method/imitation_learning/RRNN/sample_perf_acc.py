@@ -42,11 +42,12 @@ def sample_perf_acc(score, perf, score_smel, perf_smel, sec_p_beat, sr, p_extra)
     begin_ix = index[0][0]
     end_ix = index[0][-1]
     # sampled score cevts starting time
-    sampled_scorecevttime = np.arange(cevts_st[begin_ix], cevts_st[end_ix], period)
+    sampled_scorecevttime = np.arange(cevts_st[begin_ix], cevts_st[end_ix]+0.1, period)
     SCM = len(sampled_scorecevttime)
     # get the reserved perf and score
     ix = ismember(score[:, 2], sampled_scorecevttime)
     score_reserve = score[ix, :]
+    # raise ValueError
     perf_reserve = np.concatenate((aligned_perf[ix, :], score_reserve[:, 4:]), axis=1)   
     # perf_reserve = [aligned_perf[ix, :], score_reserve[:, 4]] # NOT SURE
     # NOTE: 1. perf_reserve could be shorter than M since not every cevt is
@@ -68,7 +69,7 @@ def sample_perf_acc(score, perf, score_smel, perf_smel, sec_p_beat, sr, p_extra)
         # head ix is the starting point of regression for the beginning case 
         head_cix = np.where(cevts_st <= (cevts_st[pre_cix] - p_extra * sec_p_beat))[0]
         if head_cix.size == 0:
-            head_cix = 1
+            head_cix = 0
         else:
             head_cix = head_cix[-1]
         # fill in the information        
@@ -107,18 +108,18 @@ def sample_perf_acc(score, perf, score_smel, perf_smel, sec_p_beat, sr, p_extra)
                 else:
                     ti = tn * j / n
                 new[:, 2] = ti + np.mean(aligned_perf[cevtix2ix(pre_cix), 2], axis=0)
-    
         # fill in durations
         dur_ratio = np.divide((aligned_perf[cevtix2ix(pre_cix), 3] - (aligned_perf[cevtix2ix(pre_cix), 2])), (score[cevtix2ix(pre_cix), 3] - score[cevtix2ix(pre_cix), 2]))
         new[:, 3] = new[:, 2] + period * dur_ratio
         
         # fill in the index (keep the last index of pre cevts's last note)
-        new[:, 4] = cevts_stix[pre_cix] + len(cevts[pre_cix]) - 1
+        new[:, 4] = cevts_stix[pre_cix] + len(cevts[pre_cix])
         # add the new info into perf_add
         # print(perf_add.shape)
         # print(new.shape)
         perf_add = np.append(perf_add, new, axis=0)
-
+        # print("new", new)
+    
     combined = np.append(perf_add, perf_reserve, axis=0)
     sampled_perf_ix = np.argsort(combined[:, 2])
     sampled_perf_acc = combined[sampled_perf_ix, :]

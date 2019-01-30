@@ -29,21 +29,39 @@ def showPlot(points):
     # plt.yticks(np.arange(min(points), max(points)+1, 0.1))
     plt.plot(points)
 
-    plt.savefig("results/graph/acc.pdf")
+    plt.savefig("results/train_loss/train_loss.pdf")
     plt.close(fig)
 
-def showDifPlot(init, half, last):
+def showDifPlot(loss, train_num, epoch, learning_rate, hidden_size, p, clip, model_num):
     plt.figure()
     fig, ax = plt.subplots()
+    # seperate losses for different to verify the learning 
+    list_idx = []
+
+    for i in range(train_num):
+        new_idx_list = list(range(i, len(loss), train_num))
+        list_idx.append(new_idx_list)
+    
+    plot_idx = list(range(5, train_num, 7))
+
+    for i in range(train_num):
+        losses = []
+        for j in range(int(len(loss) / train_num)):
+            losses.append(loss[list_idx[i][j]])
+        if i in plot_idx:
+            plt.plot(losses, label='loss'+str(i))
+
     # # this locator puts ticks at regular intervals
     # loc = ticker.MultipleLocator(base=0.2)
     # ax.yaxis.set_major_locator(loc)
     # plt.yticks(np.arange(min(points), max(points)+1, 0.1))
-    plt.plot(init, label='init')
-    plt.plot(half, label='half')
-    plt.plot(last, label='last')
+    if model_num == 0:
+        model_name = "FFNN"
+    elif model_num == 1:
+        model_name = 'RRNN'
+    plt.ylim(0, 0.5)
     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-    plt.savefig("results/graph/acc.pdf")
+    plt.savefig("results/acc_e" + str(epoch) + "_lr" + str(learning_rate) + "_h" + str(hidden_size) + "_p" + str(p) + "_c" + str(clip) + "_" + model_name + ".pdf")
     plt.close(fig)
 
 def matrix2midi(matrix, name):
